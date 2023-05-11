@@ -3,13 +3,107 @@ import rospy, tf
 from gazebo_msgs.msg import LinkStates
 from sensor_msgs.msg import LaserScan
 
+import matplotlib.pyplot as plt
 import numpy as np
+import math
+
+class Map:
+    def __init__(self, dim):
+        """
+        Initializes the map
+        """
+        self.dim = dim # map dimension
+        
+        # x and y positions of the grid cells (in meters)
+        self.xposition = np.zeros([self.dim,self.dim])
+        self.yposition = np.zeros([self.dim,self.dim])
+
+        for i in range(0,self.dim):
+            for j in range(0,self.dim):
+                self.xposition[i,j] = (20/self.dim)*(j) - 10 + (20/self.dim)/2
+                self.yposition[i,j] = (20/self.dim)*(i) - 10 + (20/self.dim)/2
+
+        # initialize the map as an empty map (no obstacles)
+        self.map = np.zeros([self.dim,self.dim,3])
+
+        plt.ion()
+        plt.show()
+
+    def update_map(self, my_robot):
+        z = my_robot.lid_measur
+        """
+        Updates and plots the map
+        """
+
+        # iterate over the grid cells of the map
+        for i in range(0,self.dim):
+            for j in range(0,self.dim):
+                # calculate the distance r between grid cell [i,j] and the robot 
+                r = math.sqrt((self.xposition[i,j]-my_robot.Curr_Pos[0])**2 + (self.yposition[i,j]-my_robot.Curr_Pos[1])**2)
+                # calculate angle phi, the difference in angle between the orientation of the robot from one side and the 
+                # line connecting the robot position to grid cell [i,j] from the other side
+                phi = math.atan2(self.yposition[i,j]-my_robot.Curr_Pos[1], self.xposition[i,j]-my_robot.Curr_Pos[0]) - my_robot.Curr_Pos[2]
+                # find which lidar measurement is pointing towards the grid cell [i,j]
+                k = np.argmin(np.abs(my_robot.lid_angles-phi))
+
+                # if distance r is out of the sensor's range or out of the sensor reading + its error/2, do not update the state of grid cell [i,j]
+                # OR if the difference in angle between phi and the considered sensor measurement is bigger than the sensor measurement cone angle, do not update the state of grid cell [i,j]
+                if (r > np.min([30,z[k]]) + 0.15) or (np.abs(phi-my_robot.lid_angles[k]) > 0.5):
+                    pass
+                # if sensor measurement is less than sensor range AND sensor measurement is almost equal to distance between robot and consider grid cell
+                elif (z[k] < 30) and (np.abs(r-z[k]) < 0.15) and (self.map[i,j,0] < 100):
+                    self.map[i,j] = self.map[i,j] + 25 # update state of cell [i,j] as being occupied
+                # if the considered grid cell is closer than the sensor reading value
+                elif r < z[k] and self.map[i,j,0] > 0:
+                    self.map[i,j] = self.map[i,j] - 25 # update cell [i,j] as being free
+
+                if self.map[i,j,0]==0 and self.map[i,j,1]==100: #old location of the robot (green point)
+                    self.map[i,j,1] = 0 # return it black
+
+        # Find and place robot on map
+        # find the robot's cell on the map
+        robot_i,robot_j = self.find_robot_in_map(my_robot)
+        # color the robot's cell as green
+        self.map[robot_i,robot_j,0] = 0
+        self.map[robot_i,robot_j,1] = 100
+        self.map[robot_i,robot_j,2] = 0
+
+        # Plot the map
+        map2 = np.transpose(self.map,(1,0,2))
+        plt.imshow(map2,cmap='brg',vmin=0, vmax=100)  # grayscale: gray / rgb: brg
+        plt.draw()
+        # print(f"New Map")
+        plt.pause(0.01)
+
+        # remove robot point from map
+        self.map[robot_i,robot_j,0] = 0
+        self.map[robot_i,robot_j,1] = 100
+        self.map[robot_i,robot_j,2] = 0
+
+
+
+    def find_robot_in_map(self, my_robot):
+        """
+        Finds the x and y indices corresponding to the cell of the grid-based map where the robot is located.
+        Input: Robot object.
+        Output: Index of the cell the robot is located at.
+        """
+
+        # find the index that minimizes the difference between the robot's position and the coordinates of the cells
+        robot_i = np.argmin(np.abs(self.xposition[1,:] - my_robot.Curr_Pos[0]))
+        robot_j = np.argmin(np.abs(self.yposition[:,1] - my_robot.Curr_Pos[1]))
+
+        return robot_j,robot_i
+    
+
+###########################################################################################################
 
 
 class Robot:
     def __init__(self):
         self.Curr_Pos = [0,0,0]
         self.Curr_Pos_world = [0,0,0]
+        self.first_scan = 1
 
     def get_world_pose(self, world_pose_msg: LinkStates):
         """
@@ -44,6 +138,7 @@ class Robot:
 
 if __name__ == '__main__':
     
+    my_map = Map(200)
     my_robot = Robot()
     
     rospy.init_node("husky_slam_node")
@@ -55,5 +150,9 @@ if __name__ == '__main__':
     rospy.sleep(2)
     
     while not rospy.is_shutdown():
-        print(my_robot.Curr_Pos)
+        my_map.update_map(my_robot)
+        rospy.sleep(1)
+        print('Move')
+        rospy.sleep(5)
+        print("Stop")
         rospy.sleep(3)
