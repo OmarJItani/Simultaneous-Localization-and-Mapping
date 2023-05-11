@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import rospy, tf
 from gazebo_msgs.msg import LinkStates
+from sensor_msgs.msg import LaserScan
+
+import numpy as np
 
 
 class Robot:
@@ -22,6 +25,21 @@ class Robot:
         # # If you want to update the robot's position using real world (gazebo) data
         self.Curr_Pos_world = [real_x, real_y, real_orient]
         self.Curr_Pos = self.Curr_Pos_world
+    
+    def update_lidar_measurements(self, lid_data: LaserScan):
+        """
+        Updates the lidar measurements used in plotting the map.
+        This function is called whenever a message is recieved from the lidar. 
+        """
+        if self.first_scan:
+            print("First scan")
+            self.first_scan = 0
+            lid_min_angl = lid_data.angle_min
+            lid_max_angl = lid_data.angle_max
+            self.lid_angles = -np.linspace(lid_min_angl,lid_max_angl,720)
+        
+        # Update lidar measurements
+        self.lid_measur = lid_data.ranges
 
 
 if __name__ == '__main__':
@@ -31,7 +49,8 @@ if __name__ == '__main__':
     rospy.init_node("husky_slam_node")
     
     sub = rospy.Subscriber("/gazebo/link_states", LinkStates, callback = my_robot.get_world_pose)
-    
+    lidar_sub = rospy.Subscriber("/front/scan", LaserScan, callback = my_robot.update_lidar_measurements)
+
     rospy.loginfo("Node has been started")
     rospy.sleep(2)
     
