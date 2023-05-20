@@ -119,7 +119,16 @@ class Robot:
         # # If you want to update the robot's position using real world (gazebo) data
         self.Curr_Pos_world = [real_x, real_y, real_orient]
         self.Curr_Pos = self.Curr_Pos_world
-    
+
+    def get_odometry_pose(self, odometry_pose_msg: Odometry):
+        odom_x = odometry_pose_msg.pose.pose.position.x
+        odom_y = odometry_pose_msg.pose.pose.position.y
+        odom_orient = tf.transformations.euler_from_quaternion(( odometry_pose_msg.pose.pose.orientation.x, odometry_pose_msg.pose.pose.orientation.y, odometry_pose_msg.pose.pose.orientation.z, odometry_pose_msg.pose.pose.orientation.w))[2]
+
+        # update robot's current pose
+        self.Cur_Odom_Pos = [odom_x, odom_y, odom_orient]
+
+
     def update_lidar_measurements(self, lid_data: LaserScan):
         """
         Updates the lidar measurements used in plotting the map.
