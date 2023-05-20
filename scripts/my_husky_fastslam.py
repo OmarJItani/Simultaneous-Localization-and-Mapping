@@ -2,6 +2,7 @@
 import rospy, tf
 from gazebo_msgs.msg import LinkStates
 from sensor_msgs.msg import LaserScan
+from nav_msgs.msg import Odometry
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -153,6 +154,7 @@ if __name__ == '__main__':
     rospy.init_node("husky_slam_node")
     
     sub = rospy.Subscriber("/gazebo/link_states", LinkStates, callback = my_robot.get_world_pose)
+    husky_odom_sub = rospy.Subscriber("/husky_velocity_controller/odom", Odometry, callback = my_robot.get_odometry_pose)
     lidar_sub = rospy.Subscriber("/front/scan", LaserScan, callback = my_robot.update_lidar_measurements)
 
     rospy.loginfo("Node has been started")
