@@ -130,6 +130,18 @@ class Robot:
         self.Cur_Odom_Pos = [odom_x, odom_y, odom_orient]
 
 
+
+    def calc_sample(self, b):
+        """
+        This function generates a random variable from a normal distribution with mean 0 and variance b
+        """
+        # specify the mean and standard deviation of the normal distribution
+        mu, sigma = 0, abs(b)
+
+        # generate a random variable from a normal distribution with the specified mean and standard deviation
+        return np.random.normal(mu, sigma)
+
+
     def update_lidar_measurements(self, lid_data: LaserScan):
         """
         Updates the lidar measurements used in plotting the map.
