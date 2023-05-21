@@ -83,6 +83,7 @@ class Map:
 
 
 
+
     def find_robot_in_map(self, my_robot):
         """
         Finds the x and y indices corresponding to the cell of the grid-based map where the robot is located.
@@ -101,10 +102,15 @@ class Map:
 
 
 class Robot:
-    def __init__(self):
+    def __init__(self, number_of_sample_points = 40):
         self.Curr_Pos = [0,0,0]
         self.Curr_Pos_world = [0,0,0]
+        self.Cur_Odom_Pos = [0,0,0]
+        self.Old_Odom_Pos = [0,0,0]
         self.first_scan = 1
+        self.number_of_sample_points = number_of_sample_points
+        self.points_cloud = np.zeros((self.number_of_sample_points, 3))
+
 
     def get_world_pose(self, world_pose_msg: LinkStates):
         """
@@ -141,6 +147,38 @@ class Robot:
         # generate a random variable from a normal distribution with the specified mean and standard deviation
         return np.random.normal(mu, sigma)
 
+    def sample_motion_model_odometry(self):
+        # alpha1, alpha2, alpha3, alpha4 = 0.3, 0.3, 0.3, 0.3
+        # alpha1, alpha2, alpha3, alpha4 = 0.015, 0.0022, 0.017, 0.01  # majd
+        alpha1, alpha2, alpha3, alpha4 = 0.015, 0.01, 0.050, 0.01  # omar
+        """
+        alpha1: effect of rotation on rotation error
+        alpha2: effect of translation on rotation error
+        alpha3: effect of translation on translation error
+        alpha4: effect of rotation on translation error
+        """
+
+        # print(f"Cur Odom: {self.Cur_Odom_Pos}")
+        # print(f"Old Odom: {self.Old_Odom_Pos}")
+
+        # get velocities: step 2-3-4 in algorithm
+        delta_rot_1 = math.atan2(self.Cur_Odom_Pos[1]-self.Old_Odom_Pos[1] , self.Cur_Odom_Pos[0]-self.Old_Odom_Pos[0]) - self.Old_Odom_Pos[2]
+        delta_trans = math.sqrt( (self.Cur_Odom_Pos[1]-self.Old_Odom_Pos[1])**2 + (self.Cur_Odom_Pos[0]-self.Old_Odom_Pos[0])**2 )
+        delta_rot_2 = self.Cur_Odom_Pos[2] - self.Old_Odom_Pos[2] - delta_rot_1
+
+        for j in range(self.number_of_sample_points):
+            # Subtract Errors: Steps 5-6-7
+            delta_rot_1_hat = delta_rot_1 - self.calc_sample(alpha1*delta_rot_1 + alpha2*delta_trans)
+            delta_trans_hat = delta_trans - self.calc_sample(alpha3*delta_trans + alpha4*(delta_rot_1+delta_rot_2))
+            delta_rot_2_hat = delta_rot_2 - self.calc_sample(alpha1*delta_rot_2 + alpha2*delta_trans)
+
+            # Compute Cloud: Step 8-9-10
+            self.points_cloud[j][0] = self.points_cloud[j][0] + delta_trans_hat*math.cos(self.points_cloud[j][2]+delta_rot_1_hat)
+            self.points_cloud[j][1] = self.points_cloud[j][1] + delta_trans_hat*math.sin(self.points_cloud[j][2]+delta_rot_1_hat)
+            self.points_cloud[j][2] = self.points_cloud[j][2] + delta_rot_1_hat + delta_rot_2_hat
+
+        # print(self.points_cloud)
+        self.Old_Odom_Pos = self.Cur_Odom_Pos
 
     def update_lidar_measurements(self, lid_data: LaserScan):
         """
