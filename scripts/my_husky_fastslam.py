@@ -97,6 +97,19 @@ class Map:
 
         return robot_j,robot_i
     
+    def find_particles_in_map(self, my_robot, ind):
+        """
+        Finds the x and y indices corresponding to the cell of the grid-based map where the considered sampling particle is located.
+        Input: Robot object.
+        Output: Index of the cell the sampling particle is located at.
+        """
+
+        # find the index that minimizes the difference between the particle's position and the coordinates of the cells
+
+        particle_i = np.argmin(np.abs(self.xposition[1,:] - my_robot.points_cloud[ind,0]))
+        particle_j = np.argmin(np.abs(self.yposition[:,1] - my_robot.points_cloud[ind,1]))
+
+        return particle_j,particle_i
 
 ###########################################################################################################
 
