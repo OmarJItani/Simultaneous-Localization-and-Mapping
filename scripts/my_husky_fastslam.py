@@ -209,6 +209,68 @@ class Robot:
         # print(self.points_cloud)
         self.Old_Odom_Pos = self.Cur_Odom_Pos
 
+
+    def cast_rays(self, my_map, x_particle, y_particle, number_of_rays, Zmin=1.0, Zmax=30.0, pixelToMeterRatio=0.1):
+
+        # Get the dimensions of the image
+        image_height, image_width = my_map.dim, my_map.dim
+
+        x_particle = np.argmin(np.abs(my_map.xposition[1,:] - x_particle))
+        y_particle = np.argmin(np.abs(my_map.yposition[:,1] - y_particle))
+        # print(f"x,y: {x_particle,y_particle}")
+
+        r = np.linspace(Zmin/pixelToMeterRatio, Zmax/pixelToMeterRatio, 1000)
+
+        # angles are measured in the inertial frame (inertial x-axis is zero, anti-clockwise is positive)
+        angles = np.linspace(0, -2*np.pi, number_of_rays+1)[:-1]
+        ranges = np.zeros(number_of_rays)
+
+        for i in range(number_of_rays):
+            theta = angles[i]
+            
+            x = x_particle + r*np.cos(theta)
+            y = y_particle + r*np.sin(theta)
+
+            xint = np.int32(np.round(x))
+            yint = np.int32(np.round(y))
+
+            # use numpy.where() to find the indices of points that lie within the image boundaries
+            valid_indices = np.where((xint >= 0) & (xint < image_width) & (yint >= 0) & (yint < image_height))
+            # use the resulting indices to get the subset of x and y coordinates that lie within the image
+            valid_xint = xint[valid_indices]
+            valid_yint = yint[valid_indices]
+
+            # Extract the pixel values at the points that lie within the image boundaries
+            new_set = my_map.map[valid_xint, valid_yint, 0]
+
+            # print(new_set.size)
+            # If there are any valid points
+            if new_set.size:
+                # Find the index of the point with the highest pixel value
+                intersection_index = np.argmax(new_set)
+                # Get the coordinates of the point with the highest pixel value
+                px, py = valid_xint[intersection_index], valid_yint[intersection_index]
+
+                # # draw ray in green
+                # my_map.map[valid_xint, valid_yint, 1] = 100
+                
+                if my_map.map[px, py, 0] == 0: # if no obstacle found, set range to Zmax
+                    ranges[i] = Zmax
+                else: # if obstacle found, set range to euclidean distance
+                    ranges[i] = math.sqrt( (px - x_particle)**2 + (py - y_particle)**2  )*pixelToMeterRatio
+
+            else: # the ray did not hit any obstacle in the image 
+                ranges[i] = Zmax
+
+        # image2 = np.flipud(np.transpose(my_map.map,(1,0,2)))
+        # plt.imshow(image2,cmap='gray',vmin=0, vmax=1)  # grayscale: gray / rgb: brg
+
+        # plt.draw()
+        # # print(f"New Map")
+        # plt.pause(0.01)
+
+        return angles, ranges
+
     def update_lidar_measurements(self, lid_data: LaserScan):
         """
         Updates the lidar measurements used in plotting the map.
