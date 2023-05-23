@@ -69,6 +69,16 @@ class Map:
         self.map[robot_i,robot_j,1] = 100
         self.map[robot_i,robot_j,2] = 0
 
+        # Find and place the sampling particles on map
+        # for each particle
+        for ind in range(my_robot.number_of_sample_points):
+            # find the particle's cell on map
+            particle_i,particle_j = self.find_particles_in_map(my_robot,ind)
+            # color the particle's cell as red
+            self.map[particle_i,particle_j,0] = 100
+            self.map[particle_i,particle_j,1] = 0
+            self.map[particle_i,particle_j,2] = 0
+
         # Plot the map
         map2 = np.transpose(self.map,(1,0,2))
         plt.imshow(map2,cmap='brg',vmin=0, vmax=100)  # grayscale: gray / rgb: brg
@@ -81,6 +91,12 @@ class Map:
         self.map[robot_i,robot_j,1] = 100
         self.map[robot_i,robot_j,2] = 0
 
+        # remove particles from map
+        for ind in range(my_robot.number_of_sample_points):
+            particle_i,particle_j = self.find_particles_in_map(my_robot,ind)
+            self.map[particle_i,particle_j,0] = 0
+            self.map[particle_i,particle_j,1] = 0
+            self.map[particle_i,particle_j,2] = 0
 
 
 
