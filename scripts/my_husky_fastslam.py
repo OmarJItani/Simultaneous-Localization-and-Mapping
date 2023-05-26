@@ -271,6 +271,72 @@ class Robot:
 
         return angles, ranges
 
+    def measurement_model(self, Zmax=30.0, number_of_rays=4):
+        # ztkstar is from raycasting
+        # ztk is from lidar
+
+        zt = self.lid_measur
+
+        w_hit, w_short, w_max, w_rand = 0.95, 0.01, 0.02, 0.02 # sum of weights should be equal to 1
+        lambda_short=0.3
+        sigma_hit=0.25
+
+        particles_prob = np.zeros(self.number_of_sample_points)
+        # print("new set of particles")
+        for particle_ind, particle in enumerate(self.points_cloud):
+            angles, ranges = self.cast_rays(my_map, particle[0], particle[1], number_of_rays)
+
+            # print(angles)
+            # print(ranges)
+            # print(f"At {round(self.lid_angles[120],2)}: {zt[120]} At {round(self.lid_angles[600],2)}: {zt[600]}")
+
+            ray_prob = np.zeros(number_of_rays) # probabilities array
+
+            # For each ray
+            for ray in range(number_of_rays):
+
+                # get the lidar direction k that correspond to the considered ray
+                ztkstar = ranges[ray]
+                k = np.argmin(np.abs((self.lid_angles-self.Curr_Pos[2]) - angles[ray])) # make sure that the lidar and the simulates lidar(raycasting) have same angles
+                ztk = zt[k]
+
+
+                # Compute probabilities
+                # Compute p_hit
+                if ztk > 0 and ztk < Zmax:
+                    eta_hit = 1
+                    N = (1 / (math.sqrt(2 * math.pi * sigma_hit**2))) * math.exp(-0.5 * ((ztk - ztkstar)**2 / sigma_hit**2))
+                    p_hit = eta_hit * N
+                else:
+                    p_hit = 0
+
+                # Compute p_short
+                if ztk > 0 and ztk < ztkstar:
+                    eta_short = 1 / (1 - math.exp(-lambda_short * ztkstar))
+                    p_short = eta_short * lambda_short * math.exp(-lambda_short * ztk)
+                else:
+                    p_short = 0
+
+                # Compute p_max
+                if ztk >= Zmax:
+                    p_max = 1
+                else:
+                    p_max = 0
+
+                # Compute p_rand
+                if ztk > 0 and ztk < Zmax:
+                    p_rand = 1 / Zmax
+                else:
+                    p_rand = 0
+
+                # Compute Overall probability for considered ray
+                ray_prob[ray] = w_hit*p_hit + w_short*p_short + w_max*p_max + w_rand*p_rand
+            
+            # Compute probability of the considered particle (by multiplying the probabilities of all rays at the considered particle)
+            particles_prob[particle_ind] = np.prod(ray_prob)
+        
+        return particles_prob
+
     def update_lidar_measurements(self, lid_data: LaserScan):
         """
         Updates the lidar measurements used in plotting the map.
