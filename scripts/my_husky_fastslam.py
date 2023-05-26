@@ -112,7 +112,7 @@ class Map:
         robot_j = np.argmin(np.abs(self.yposition[:,1] - my_robot.Curr_Pos[1]))
 
         return robot_j,robot_i
-    
+
     def find_particles_in_map(self, my_robot, ind):
         """
         Finds the x and y indices corresponding to the cell of the grid-based map where the considered sampling particle is located.
@@ -127,12 +127,13 @@ class Map:
 
         return particle_j,particle_i
 
-###########################################################################################################
+########################################################################
 
 
 class Robot:
     def __init__(self, number_of_sample_points = 40):
         self.Curr_Pos = [0,0,0]
+        self.Curr_Pos_localize = [0,0,0]
         self.Curr_Pos_world = [0,0,0]
         self.Cur_Odom_Pos = [0,0,0]
         self.Old_Odom_Pos = [0,0,0]
@@ -154,7 +155,10 @@ class Robot:
 
         # # If you want to update the robot's position using real world (gazebo) data
         self.Curr_Pos_world = [real_x, real_y, real_orient]
-        self.Curr_Pos = self.Curr_Pos_world
+        # self.Curr_Pos = self.Curr_Pos_world
+
+        # # publish an updated velocity command
+        # self.update_velocity_command()
 
     def get_odometry_pose(self, odometry_pose_msg: Odometry):
         odom_x = odometry_pose_msg.pose.pose.position.x
@@ -175,7 +179,7 @@ class Robot:
 
         # generate a random variable from a normal distribution with the specified mean and standard deviation
         return np.random.normal(mu, sigma)
-
+    
     def sample_motion_model_odometry(self):
         # alpha1, alpha2, alpha3, alpha4 = 0.3, 0.3, 0.3, 0.3
         # alpha1, alpha2, alpha3, alpha4 = 0.015, 0.0022, 0.017, 0.01  # majd
@@ -358,6 +362,7 @@ class Robot:
         self.Curr_Pos_localize[2] = self.Curr_Pos_world[2] # let me try to use the world orientation only
         self.Curr_Pos = self.Curr_Pos_localize
 
+
     def update_lidar_measurements(self, lid_data: LaserScan):
         """
         Updates the lidar measurements used in plotting the map.
@@ -372,26 +377,40 @@ class Robot:
         
         # Update lidar measurements
         self.lid_measur = lid_data.ranges
+    
+
+
+
+
 
 
 if __name__ == '__main__':
     
-    my_map = Map(200)
+    my_map = Map(100)
     my_robot = Robot()
-    
+ 
     rospy.init_node("husky_slam_node")
     
     sub = rospy.Subscriber("/gazebo/link_states", LinkStates, callback = my_robot.get_world_pose)
     husky_odom_sub = rospy.Subscriber("/husky_velocity_controller/odom", Odometry, callback = my_robot.get_odometry_pose)
     lidar_sub = rospy.Subscriber("/front/scan", LaserScan, callback = my_robot.update_lidar_measurements)
-
+    
     rospy.loginfo("Node has been started")
     rospy.sleep(2)
     
     while not rospy.is_shutdown():
         my_map.update_map(my_robot)
+        my_robot.sample_motion_model_odometry()
+        my_robot.sampling_and_localization()
+
+        print(f"Current_Pose_World: {[round(my_robot.Curr_Pos[0],2) , round(my_robot.Curr_Pos[1],2) , round(my_robot.Curr_Pos[2],2)]}")
+        print(f"Current_Pose_Local: {[round(my_robot.Curr_Pos_localize[0],2) , round(my_robot.Curr_Pos_localize[1],2) , round(my_robot.Curr_Pos_localize[2],2)]}")
+
         rospy.sleep(1)
         print('Move')
         rospy.sleep(5)
         print("Stop")
         rospy.sleep(3)
+        
+
+    # rospy.spin()
