@@ -337,6 +337,27 @@ class Robot:
         
         return particles_prob
 
+
+    def sampling_and_localization(self):
+
+        # Resampling
+        particles_prob = self.measurement_model()
+        # print(f"particles_prob: {particles_prob}")
+        # print(f"particles norm: {np.linalg.norm(particles_prob)}")
+        # normalized_particles_prob = particles_prob / np.linalg.norm(particles_prob)
+        normalized_particles_prob = particles_prob / particles_prob.sum()
+        # print(normalized_particles_prob)
+        resampled_points_cloud_indices = np.random.choice(range(self.number_of_sample_points), size=self.number_of_sample_points, p=normalized_particles_prob)
+
+        self.points_cloud = self.points_cloud[resampled_points_cloud_indices]
+
+        # Localization
+        location_index = np.argmax(normalized_particles_prob)
+        self.Curr_Pos_localize = self.points_cloud[location_index]
+
+        self.Curr_Pos_localize[2] = self.Curr_Pos_world[2] # let me try to use the world orientation only
+        self.Curr_Pos = self.Curr_Pos_localize
+
     def update_lidar_measurements(self, lid_data: LaserScan):
         """
         Updates the lidar measurements used in plotting the map.
