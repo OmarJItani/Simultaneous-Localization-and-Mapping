@@ -8,12 +8,12 @@ In other words, the presented ROS package utilizes the robot's odometry and lida
 
 Simulation in Gazebo: 
 <figure>
-  <img src="README_files/gazebo.png" width="450px" height="300px">
+  <img src="README_files/gazebo.png" width="900px" height="600px">
 </figure>
 
 Map of the environment (robot location in green):
 <figure>
-  <img src="README_files/map.png" width="300px" height="300px">
+  <img src="README_files/map.png" width="600px" height="600px">
 </figure>
 
 
