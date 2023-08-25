@@ -10,38 +10,15 @@ This repository contains my implementation of FastSLAM algorithm presented in th
 
 In other words, the presented ROS package utilizes the robot's odometry and lidar data to map the environment as well as to estimate the robot's pose by means of Monte-Carlo localization. The developed algorithm is simulated in Gazebo using the ClearPath Husky robot.
 
+Simulation in Gazebo: 
+<figure>
+  <img src="README_files/gazebo.png" width="900px" height="600px">
+</figure>
 
-<!-- <table>
-   <tr>
-    <td> <img src="README_files/gazebo.png" width = 450px height = 300px ></td>
-    <td><img src="README_files/map.png" width = 300px height = 300px></td>
-   </tr> 
-</table> -->
-
-<style>
-  figure {
-    text-align: center;
-  }
-</style>
-
-<table>
-  <tr>
-    <td>
-      <figure>
-        <img src="README_files/gazebo.png" width="450px" height="300px">
-        <figcaption>Simulation in gazebo</figcaption>
-      </figure>
-    </td>
-    <td>
-      <figure>
-        <img src="README_files/map.png" width="300px" height="300px">
-        <figcaption>Map of the environment (robot location in green)</figcaption>
-      </figure>
-    </td>
-  </tr>
-</table>
-
-
+Map of the environment (robot location in green):
+<figure>
+  <img src="README_files/map.png" width="600px" height="600px">
+</figure>
 
 
 ## How to install the package?
